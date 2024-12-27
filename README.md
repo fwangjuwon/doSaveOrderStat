@@ -1,18 +1,19 @@
-## Getting Started
+# AS-IS
+```
+	var cRow = dsOrderDtl.rowposition; //현재 position 되어있는 row의 데이터를 저장함
 
-Welcome to the VS Code Java world. Here is a guideline to help you get started to write Java code in Visual Studio Code.
+    switch (obj.name) {
+    case "btnOrderHstDlvrStatRvis" :
 
-## Folder Structure
+        if ( dsOrderDtl.getColumn(cRow, "goodsTypeCd").substr(2, 1) == "L" || dsOrderDtl.getColumn(cRow, "partialTypeCd") == "PRL" ){//|| dsOrderDtl.getColumn(cRow, "giftYn") == "Y" ) {
+                    return false;
+        }
 
-The workspace contains two folders by default, where:
+    }
 
-- `src`: the folder to maintain sources
-- `lib`: the folder to maintain dependencies
+```
 
-Meanwhile, the compiled output files will be generated in the `bin` folder by default.
+# TO-BE
+```
 
-> If you want to customize the folder structure, open `.vscode/settings.json` and update the related settings there.
-
-## Dependency Management
-
-The `JAVA PROJECTS` view allows you to manage your dependencies. More details can be found [here](https://github.com/microsoft/vscode-java-dependency#manage-dependencies).
+```
