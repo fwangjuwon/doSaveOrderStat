@@ -1,19 +1,120 @@
-# AS-IS
+# 개선된 포인트와 코드 비교
+
+## 1. 코드 간소화 및 가독성 향상
+**AS-IS**
+```javascript
+if(dsOrderDtl.getCaseCount("choiceGub == '1'") == 0){
+    dsOrderDtl.enableevent = false;
+    dsOrderDtl.setColumn(cRow, "choiceGub", "1");
+    dsOrderDtl.enableevent = true;
+}
 ```
-	var cRow = dsOrderDtl.rowposition; //현재 position 되어있는 row의 데이터를 저장함
 
-    switch (obj.name) {
-    case "btnOrderHstDlvrStatRvis" :
+**TO-BE**
+```javascript
+if (dsOrderDtl.getCaseCount("choiceGub == '1'") == 0) {
+    dsOrderDtl.reset();
+    dsOrderDtl.setColumn(cRow, "choiceGub", "1");
+}
+```
 
-        if ( dsOrderDtl.getColumn(cRow, "goodsTypeCd").substr(2, 1) == "L" || dsOrderDtl.getColumn(cRow, "partialTypeCd") == "PRL" ){//|| dsOrderDtl.getColumn(cRow, "giftYn") == "Y" ) {
-                    return false;
-        }
+**개선 포인트**: 이벤트를 반복적으로 활성화/비활성화하는 복잡한 코드 대신, `reset()`을 사용하여 단순화.
 
+---
+
+## 2. 로직 최적화
+**AS-IS**
+```javascript
+var pStatCd = "100;110;120;130;140;;";
+var pVal = pStatCd.indexOf(dsOrderDtl.getColumn(choiceIndx, "reltStatCd"));
+// 여러 번 반복되는 루프에서 검증
+for(var i = choiceIndx; i < dsOrderDtl.rowcount; i++){
+    if (dsOrderDtl.getColumn(i, "choiceGub") == 1 && pVal == -1) {
+        alert("변경할 수 없는 데이터입니다.");
+        return false;
     }
-
+}
 ```
 
-# TO-BE
+**TO-BE**
+```javascript
+var pStatCd = "100;110;120;130;140;;";
+var pVal = pStatCd.indexOf(dsOrderDtl.getColumn(cRow, "reltStatCd"));
+if (pVal == -1) {
+    alert("변경할 수 없는 데이터입니다.");
+    return false;
+}
 ```
 
+**개선 포인트**: `pStatCd` 검증 로직을 루프 외부로 이동하여 불필요한 반복 제거.
+
+---
+
+## 3. 중복 코드 제거
+**AS-IS**
+```javascript
+for(var i = 0; i < dsOrderDtl.rowcount; i++) {
+    if (dsOrderDtl.getColumn(i, "choiceGub") == 1) {
+        dsOrderDtl.setColumn(i, "reltStatCd", "150");
+    }
+}
 ```
+
+**TO-BE**
+```javascript
+dsOrderDtl.filter("choiceGub == '1'");
+for (var i = 0; i < dsOrderDtl.rowcount; i++) {
+    dsOrderDtl.setColumn(i, "reltStatCd", "150");
+}
+dsOrderDtl.filter(""); // 필터 초기화
+```
+
+**개선 포인트**: 데이터 필터링을 적용해 선택된 데이터만 처리, 루프의 범위를 줄임.
+
+---
+
+## 4. 에러 처리 및 권한 검증 강화
+**AS-IS**
+```javascript
+if(dsOrderDtl.getColumn(i, "reltStatCd") == "120") {
+    if(!gfnGetLogicAuth("OR_DLVR_FN")) {
+        alert("권한이 없습니다.");
+        return false;
+    }
+}
+```
+
+**TO-BE**
+```javascript
+if (dsOrderDtl.getColumn(cRow, "reltStatCd") == "120" && !gfnGetLogicAuth("OR_DLVR_FN")) {
+    gfnMessage("현재 로그인 사용자는 배송완료 권한이 없습니다.");
+    return false;
+}
+```
+
+**개선 포인트**: 조건 검증을 단순화하고 메시지 전달 방식을 통일하여 유지보수 용이.
+
+---
+
+## 5. 이벤트 설정 간소화
+**AS-IS**
+```javascript
+dsOrderDtl.enableevent = false;
+dsOrderDtl.filter("choiceGub == '1'");
+dsOrderDtl.enableevent = true;
+```
+
+**TO-BE**
+```javascript
+dsOrderDtl.filter("choiceGub == '1'");
+```
+
+**개선 포인트**: `enableevent` 불필요한 설정 제거로 코드 단순화.
+
+---
+
+## 기대 효과
+- **유지보수 시간 단축**: 간결한 코드로 인해 디버깅 및 확장 작업이 용이.
+- **성능 향상**: 중복 로직 제거 및 초기 데이터 검증 강화로 실행 속도 증가.
+- **코드 가독성 향상**: 구조화된 로직으로 팀원 간 협업 효율 증가.
+

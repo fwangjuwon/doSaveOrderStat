@@ -28,7 +28,7 @@ public int doSaveOrderDtlReltStatCd150(DataSetMap tranInfoMap, Map inVariableMap
         }
 
         if ("1".equals(map.get("choiceGub").toString())) {
-            strOrderNum = map.get("orderNum").toString();
+            strOrderNum = map.get("orderNum").toString();ㅎ
 
             SVOR0101010DAO.SaveOrderDtlReltStatCd150(map); // 주문DTL상태변경
             map.put("userId", StringUtil.nvl(map.get("finalRvisPic")));

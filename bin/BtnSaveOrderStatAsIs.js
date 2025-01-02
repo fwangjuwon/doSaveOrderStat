@@ -2,103 +2,139 @@ switch (obj.name) {
     case "btnOrderHstDlvrStatRvis" :
     // 배송 상태 변경 (150	배송완료처리)
     // 관련 상태 코드 reltStatCd
-    // 100	주문접수
-    // 110	결제완료
-    // 120	출고지시
-    // 130	출고확정
-    // 140	출고완료
-    // 150	배송완료
-    // 200	주문후취소
-    // 210	입금후취소
-    // 220	출고지시후취소
-    // 230	출고확정후취소
-    // 240	전산자동취소
-    // 300	반품접수
-    // 310	수거지시
-    // 320	수거지시서발행
-    // 330	수거지시후취소
-    // 340	반품입고확정
-    // 350	반품취소
-        //이슈번호 0006854: 배송완료처리 오류 2014-12-09 16:20
-        /* 한개의 주문번호에 본품과 사은품이 연결되어있을경우 배송완료처리시 2개의 상품이 모두 배송완료처리됨 배송완료처리시 본품과사은품 각각 배송완료처리 할수 있도록 수정 필요함 */
-        /* 파샬 상품은 부모단위로 처리*/
-        //var wStr = "CHL;PCL;PRL;" //초이스child, 팩child, 파샬child
-        //if ( wStr.indexOf(dsOrderDtl.getColumn(cRow, "goodsTypeCd")) > -1 || wStr.indexOf(dsOrderDtl.getColumn(cRow, "partialTypeCd")) > -1) {
 
-        if ( dsOrderDtl.getColumn(cRow, "goodsTypeCd").substr(2, 1) == "L" || dsOrderDtl.getColumn(cRow, "partialTypeCd") == "PRL" ){//|| dsOrderDtl.getColumn(cRow, "giftYn") == "Y" ) {
-            return false;
-        }
+        divBody.divOrderHst.txtSelectRow.value = cRow;  // 현재 Row 저장
 
-        var pStatCd = "100;110;120;130;140;;";
-        var pVal = pStatCd.indexOf(dsOrderDtl.getColumn(cRow, "reltStatCd"));
-
-        if ( pVal == -1 ) {
-            alert("변경할 수 없는 데이타 입니다.");
-            return false;
-        }
-
-        if ( dsOrderDtl.getColumn(cRow, "orderLockCd") <> "00" ) {
-            alert("변경할 수 없는 데이타 입니다. (LOCK : " + dsOrderDtl.getColumn(cRow, "orderLockNm") + ")");
-            return false;
-
-        }
-
-        if ( dsOrderDtl.getColumn(cRow, "reltStatCd") == "120" ){//출고지시 권한체크
-            if(!gfnGetLogicAuth("OR_DLVR_FN")){
-                gfnMessage("현재 로그인 사용자는 배송완료 권한이  없습니다.");
-                return false;
-            }
-        }
-
-        //배송완료 제한 협력업체여부체크(월정산마감 이슈발생)   2023.06.20 sunyimhuh
-        if(dsOrderDtl.getColumn(cRow, "excptDlvrcompCnt") > 0){
-            if(!gfnGetLogicAuth("DLVR_CMPLT_ADMIN")){
-                gfnMessage("현재 로그인 사용자는 해당 상품의 배송완료 권한이  없습니다.");
-                return false;
-            }
-        }
-
-        if ( !confirm("배송완료 처리 하시겠습니까?") ) { return false; }
-            divBody.divOrderHst.txtSelectRow.value = cRow;  // 현재 Row 저장
-
+        //멀티체크가 가능하므로 체크가 되어있지 않은 경우에만 현재 선택한 로우를 체크처리한다.
+        if(dsOrderDtl.getCaseCount("choiceGub == '1'") == 0){
             dsOrderDtl.enableevent = false;
-
-            dsOrderDtl.reset();
             dsOrderDtl.setColumn(cRow, "choiceGub", "1");
-            dsOrderDtl.setColumn(cRow, "reltStatCd", "150");  // 150 배송완료 , 100 주문접수
-            dsOrderDtl.setColumn(cRow, "finalRvisPic", gvUserId);
+            dsOrderDtl.enableevent = true;
+        }
+        
+        //첫번째 체크 인덱스 기준 처리
+        var choiceIndx = dsOrderDtl.findRow("choiceGub", "1");
+        //정기배송여부
+        var beforePriodDlvrGoodsYn = dsOrderDtl.getColumn(choiceIndx, "priodDlvrGoodsYn");
+        var orderNum = dsOrderDtl.getColumn(choiceIndx, "orderNum");
+        var pStatCd = "100;110;120;130;140;;";
+        var pVal = pStatCd.indexOf(dsOrderDtl.getColumn(choiceIndx, "reltStatCd"));
+        var chcOrPrtOrderSeq = -1;
 
-            if ( dsOrderDtl.getColumn(cRow, "priodDlvrGoodsYn") == "Y" ) { // 정기 배송 상품 여부 = Y
-                // 정기 배송 상품 Check 처리
-                for (var i=0; i <= dsOrderDtl.rowcount-1; i++) {
-                    if ( dsOrderDtl.getColumn(cRow, "orderNum") == dsOrderDtl.getColumn(i, "orderNum") ) {
-
-                        dsOrderDtl.setColumn(i, "choiceGub", 1);
-                        dsOrderDtl.setColumn(i, "reltStatCd", "150");  // 150 배송완료 , 100 주문접수
-                        dsOrderDtl.setColumn(i, "finalRvisPic", gvUserId);
-                    } else {
-                        if ( cRow > i ) {
-                            break;
-                        }
-                    }
+        //validation 체크
+        for(var i = choiceIndx ; i<dsOrderDtl.rowcount; i++){
+            if(dsOrderDtl.getColumn(i, "orderNum") <> orderNum ){
+                break;
+            }
+            if(dsOrderDtl.getColumn(i, "choiceGub")==1 && dsOrderDtl.getColumn(choiceIndx, "goodsTypeCd").substr(2, 1) == "L" || dsOrderDtl.getColumn(choiceIndx, "partialTypeCd") == "PRL"){
+                    dsOrderDtl.enableevent = false;
+                    dsOrderDtl.reset();
+                    dsOrderDtl.enableevent = true;
+                    return false;
+            }
+            if(dsOrderDtl.getColumn(i, "choiceGub") ==1 && dsOrderDtl.getColumn(i, "reltStatCd") =="120"){
+                if(!gfnGetLogicAuth("OR_DLVR_FN")){
+                    gfnMessage("현재 로그인 사용자는 배송완료 권한이  없습니다.");
+                    dsOrderDtl.enableevent = false;
+                    dsOrderDtl.reset();
+                    dsOrderDtl.enableevent = true;
+                    return false;
                 }
+            }
+            if (dsOrderDtl.getColumn(i, "choiceGub") ==1 && pVal == -1 ) {
+                    alert("변경할 수 없는 데이타 입니다.");
+                    dsOrderDtl.enableevent = false;
+                    dsOrderDtl.reset();
+                    dsOrderDtl.enableevent = true;
+                    return false;
+            }
+            if(dsOrderDtl.getColumn(i, "choiceGub") ==1 && dsOrderDtl.getColumn(i, "excptDlvrcompCnt") > 0 ){
+                if(!gfnGetLogicAuth("DLVR_CMPLT_ADMIN")){
+                    alert("현재 로그인 사용자는 해당 상품의 배송완료 권한이  없습니다.");
+                    dsOrderDtl.enableevent = false;
+                    dsOrderDtl.reset();
+                    dsOrderDtl.enableevent = true;
+                    return false;
+                }
+            }
+            if(dsOrderDtl.getColumn(i, "choiceGub") ==1 && dsOrderDtl.getColumn(i, "orderLockCd") <> "00"){
+                alert("변경할 수 없는 데이타 입니다. (LOCK : " + dsOrderDtl.getColumn(i, "orderLockNm") + ")");
+                dsOrderDtl.enableevent = false;
+                dsOrderDtl.reset();
+                dsOrderDtl.enableevent = true;
+                return false;
+            }
+        }
 
-            } else {
-                // Chile 상품 Check 처리
-                for (var i=cRow+1; i <= dsOrderDtl.rowcount-1; i++) {
-                    if ( ( dsOrderDtl.getColumn(cRow, "orderSeq") == dsOrderDtl.getColumn(i, "parntOrderSeq") && dsOrderDtl.getColumn(i, "giftYn") <> "Y" )
-                            || ( dsOrderDtl.getColumn(i, "partialTypeCd") == "PRL" && dsOrderDtl.getColumn(cRow, "orderSeq") == dsOrderDtl.getColumn(i, "giftParntOrderSeq") ) ) {
+        dsOrderDtl.enableevent = false;
 
-                        dsOrderDtl.setColumn(i, "choiceGub", 1);
-                        dsOrderDtl.setColumn(i, "reltStatCd", "150");  // 150 배송완료 , 100 주문접수
-                        dsOrderDtl.setColumn(i, "finalRvisPic", gvUserId);
-                    } else {
+        //일반 사은품 단독 처리
+         if( dsOrderDtl.getCaseCount("choiceGub == '1'") == 1  && dsOrderDtl.getColumn(cRow, "choiceGub") == 1 && dsOrderDtl.getColumn(cRow, "giftYn") == "Y"){
+             dsOrderDtl.setColumn(cRow, "reltStatCd", "150");  // 150 배송완료 , 100 주문접수
+            dsOrderDtl.setColumn(cRow, "finalRvisPic", gvUserId);
+        }else{
+            //같은 OrderNum으로 필터
+            dsOrderDtl.filter("orderNum=='" + dsOrderDtl.getColumn(choiceIndx, "orderNum") + "'");
+
+            //정기배송
+            if(beforePriodDlvrGoodsYn== "Y"){
+                for(var i= 0; i<dsOrderDtl.rowcount; i++){
+                    if(dsOrderDtl.getColumn(i, "orderNum") <> orderNum ){
                         break;
                     }
+                    dsOrderDtl.setColumn(i, "choiceGub", 1);
+                    dsOrderDtl.setColumn(i, "reltStatCd", "150");  // 150 배송완료 , 100 주문접수
+                    dsOrderDtl.setColumn(i, "finalRvisPic", gvUserId);
+                }
+            }else{
+                for(var i = 0; i<dsOrderDtl.rowcount; i++){
+                    if(dsOrderDtl.getColumn(i, "orderNum") <> orderNum ){
+                        break;
+                    }
+                    if(dsOrderDtl.getColumn(i, "choiceGub")== '1' &&  dsOrderDtl.getColumn(i, "parntOrderSeq") == null && dsOrderDtl.getColumn(i, "giftYn") <> "Y" && ( dsOrderDtl.getColumn(i, "goodsTypeCd") == "CHC"  || dsOrderDtl.getColumn(i, "goodsTypeCd") == "PRT" )){
+                        chcOrPrtOrderSeq = dsOrderDtl.getColumn(i, "orderSeq"); //CHC, PRT 상품의 OderSeq
+                    }
+                    //CHL, PRL 같이 처리
+                    if(chcOrPrtOrderSeq <> -1 && chcOrPrtOrderSeq == dsOrderDtl.getColumn(i, "parntOrderSeq") ){
+                        dsOrderDtl.setColumn(i, "choiceGub", 1);
+                        dsOrderDtl.setColumn(i, "reltStatCd", "150");  // 150 배송완료 , 100 주문접수
+                        dsOrderDtl.setColumn(i, "finalRvisPic", gvUserId);
+                    }else{
+                        //일반상품 일괄처리 및 사후사은품 일괄처리 ※ 사후사은품 row position 이동 시, gift_yn 값이 'Y' 에서 'N'으로 setting되고 있음
+                        if((dsOrderDtl.getColumn(i, "choiceGub") ==1  && dsOrderDtl.getColumn(i, "parntOrderSeq") == null)){ 
+                            dsOrderDtl.setColumn(i, "reltStatCd", "150");  // 150 배송완료 , 100 주문접수
+                            dsOrderDtl.setColumn(i, "finalRvisPic", gvUserId);
+                        }
+                        else{ //일반사은품인 경우는 체크해제 처리	
+                              dsOrderDtl.setColumn(i, "choiceGub", 0);
+                         }
+                    }
                 }
             }
+            //filter제거
+            dsOrderDtl.filter("");	
+        }
 
             dsOrderDtl.enableevent = true;
 
-            fnSaveOrderDtlReltStatCd150(); // 관련(주문) 상태 코드 배송완료 처리
-            break;
+        if ( !confirm("배송완료 처리 하시겠습니까?") ) {
+            dsOrderDtl.enableevent = false;
+            dsOrderDtl.reset();
+            dsOrderDtl.enableevent = true;
+            return false;
+        }
+        
+        //동일 OrderNum 아닌경우 체크해제처리
+        dsOrderDtl.enableevent = false;
+        dsOrderDtl.filter("choiceGub == '1' && orderNum <> '" + orderNum + "'");
+        if(dsOrderDtl.rowcount>0){
+            for (var i=0; i < dsOrderDtl.rowcount; i++) {
+                dsOrderDtl.setColumn(i, "choiceGub", 0);
+                dsOrderDtl.setColumn(i, "crud", "R");
+            }
+        }
+        dsOrderDtl.filter("");
+        dsOrderDtl.enableevent = true;
+            
+        fnSaveOrderDtlReltStatCd150(); //  관련(주문) 상태 코드 배송완료 처리
+        break;
